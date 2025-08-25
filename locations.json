@@ -1,0 +1,44 @@
+{
+  "locations": [
+    {
+      "id": "OP1",
+      "name": "OP1",
+      "description": "Donetsk Oblast"
+    },
+    {
+      "id": "OP2",
+      "name": "OP2",
+      "description": "Dnipropetrovsk Oblast"
+    },
+    {
+      "id": "OP3",
+      "name": "OP3",
+      "description": "Zaporizhzhia Oblast"
+    },
+    {
+      "id": "OP4",
+      "name": "OP4",
+      "description": "Kyiv Oblast"
+    },
+    {
+      "id": "OP05",
+      "name": "OP5",
+      "description": "Kirovohrad Oblast"
+    },
+    {
+      "id": "OP06",
+      "name": "OP6",
+      "description": "Mykolaiv Oblast"
+    },
+    {
+      "id": "OP07",
+      "name": "OP7",
+      "description": "Odesa Oblast"
+    },
+    {
+      "id": "OP08",
+      "name": "OP8",
+      "description": "Sumy Oblast"
+    }
+  ]
+}

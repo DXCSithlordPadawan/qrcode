@@ -1,0 +1,7 @@
+I need to generate a series of Python Scripts.  All scripts are to us an external file to store amendable parameters such as IP Addresses, Domain Name, RabbitMQ server address, eMail Server address, list of QRCode for Locations, list of QRCode for objects, etc.
+All scripts will operate agains an existing Domain Controller and existing Certificate Server both pre-configured for the domain and an existing RabbitMQ and email server.
+One Python script is required to run on an Raspberry equiped with a Camera, when the camera comes across a QRCode, it will check against a list of locations for the code identified,
+when matched it will store the location in memory, if the QRCode does not match it shouyld be checked against the lit of objects, when matched the pythion script is to generate 
+a RabbitMQ message detailing the location and object and datetime.
+Subsequent scripts should ingest the message generated into RabbitMQ Server and process according to the preset rules a new message is then generated to 
+send the details of the identification to both a Telecent IES4 Schema and Apache SOLR Schema updating the information for the object as being in a new location.
