@@ -35,33 +35,33 @@
     },
     "qr_codes": {
         "locations": {
-            "LOC001": "Building A - Floor 1 - Room 101",
-            "LOC002": "Building A - Floor 1 - Room 102",
-            "LOC003": "Building A - Floor 2 - Room 201",
-            "LOC004": "Building B - Warehouse - Section A",
-            "LOC005": "Building B - Warehouse - Section B",
-            "LOC006": "Parking Lot - North Side",
-            "LOC007": "Reception Area",
-            "LOC008": "Server Room"
+            "OP1": "Donetsk Oblas",
+            "OP2": "Dnipropetrovsk Oblas",
+            "OP3": "Zaporizhzhia",
+            "OP4": "Kyiv Oblas",
+            "OP5": "Kirovohrad Oblas",
+            "OP6": "Mykolaivk Oblas",
+            "OP7": "Odessa Oblas",
+            "OP8": "Sumy Oblas"
         },
         "objects": {
-            "OBJ001": {
-                "name": "Laptop - Dell Latitude 5520",
-                "type": "Computer",
-                "serial": "DL123456789",
-                "owner": "John Smith"
+            "SADrone.js": {
+                "name": "SADrone.js",
+                "type": "Unmanned Aircraftr",
+                "serial": "Russian Federation",
+                "owner": "Sokol Altius Dron"
             },
-            "OBJ002": {
-                "name": "Projector - Epson PowerLite",
+            "KA50.js": {
+                "name": "KA50.jse",
                 "type": "AV Equipment",
-                "serial": "EP987654321",
-                "owner": "IT Department"
+                "serial": "Russian Federation",
+                "owner": "Ka-50 Helicoptert"
             },
-            "OBJ003": {
-                "name": "Network Switch - Cisco 2960",
-                "type": "Network Equipment",
-                "serial": "CS456789123",
-                "owner": "Network Team"
+            "S500.js": {
+                "name": "S500.js",
+                "type": "Vehicle",
+                "serial": "Russian Federation",
+                "owner": "S-500 Prometheus"
             },
             "OBJ004": {
                 "name": "Fire Extinguisher",
