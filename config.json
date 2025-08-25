@@ -1,0 +1,132 @@
+{
+    "domain_controller": {
+        "server": "dc.piclusteer.local",
+        "port": 389,
+        "use_ssl": true,
+        "base_dn": "DC=picluster,DC=local",
+        "service_account": "svc_qr_scanner",
+        "service_password": "your_service_password"
+    },
+    "certificate_server": {
+        "server": "ca.picluster.local",
+        "web_enrollment_url": "https://ca.picluster.local/certsrv",
+        "template_name": "WebServer"
+    },
+    "rabbitmq": {
+        "host": "localhost",
+        "port": 5672,
+        "username": "odin",
+        "password": "BobTheBigRedBus-0",
+        "virtual_host": "/",
+        "exchange": "asset_tracking",
+        "queue_scan_results": "scan_results",
+        "queue_location_updates": "location_updates",
+        "routing_key_scan": "qr.scan.result",
+        "routing_key_update": "asset.location.update"
+    },
+    "email": {
+        "smtp_server": "mail.picluster.local",
+        "smtp_port": 587,
+        "use_tls": true,
+        "username": "notifications@yourdomain.com",
+        "password": "your_email_password",
+        "from_address": "qr-scanner@yourdomain.com",
+        "alert_recipients": ["admin@yourdomain.com", "security@yourdomain.com"]
+    },
+    "qr_codes": {
+        "locations": {
+            "LOCATION:OP1|OP1": {
+                "name": "OP1",
+                "description": "Donetsk Oblast"
+                },
+            "LOCATION:OP2|OP2": {
+                "name": "OP2",
+                "description": "Dnipropetrovsk Oblast"
+                },
+            "LOCATION:OP3:OP3": {
+                "name": "OP3",
+                "description": "Zaporizhzhia Oblast"
+                },
+            "LOCATION:OP4:OP4": {
+                "name": "OP4",
+                "description": "Kyiv Oblast"
+                },
+            "LOCATION:OP5:OP5": {
+                "name": "OP5",
+                "description": "Mykolaiv Oblast"
+                },
+            "LOCATION:OP6:OP6": {
+                "name": "OP6",
+                "description": "Donetsk Oblast"
+                },
+            "LOCATION:OP7:OP7": {
+                "name": "OP7",
+                "description": "Odessa Oblast"
+                },
+            "LOCATION:OP8:OP8": {
+                "name": "OP8",
+                "description": "Sumy Oblast"
+                }
+            },
+        "objects": {
+            "OBJECT:SADrone|SADrone|Russian Federation": {
+                "name": "SADrone",
+                "category": "Unmanned Aircraft",
+                "serial": "Russian Federation",
+                "description": "Red Mech Brigade"
+                },
+            "OBJECT:KA50|KA50|Russian Federation": {
+                "name": "KA50",
+                "category": "Aircraft",
+                "serial": "Russian Federation",
+                "description": "Ka-50 Helicopter"
+                },
+            "OBJECT:S500|S500|Russian Federation": {
+                "name": "S500",
+                "category": "Vehicle",
+                "serial": "Russian Federation",
+                "description": "S-500 Prometheus"
+                },
+            "OBJECT:OBJ004|Red4|NSN0126": {
+                "name": "Red4",
+                "category": "Obstacle",
+                "serial": "NSN0126",
+                "description": "Red Tank Trap"
+                },
+            "OBJECT:OBJ005|Red5|NSN0127": {
+                "name": "Red5",
+                "category": "Land",
+                "serial": "NSN0127",
+                "description": "Red Infantry Reg 1"
+                }
+            }
+        },
+    "tencent_ies4": {
+        "api_endpoint": "https://ies4-api.yourdomain.com/v1",
+        "api_key": "your_tencent_ies4_api_key",
+        "tenant_id": "your_tenant_id",
+        "timeout": 30
+    },
+    "apache_solr": {
+        "base_url": "http://solr.yourdomain.com:8983/solr",
+        "collection": "asset_tracking",
+        "username": "solr_user",
+        "password": "your_solr_password",
+        "timeout": 30
+    },
+    "scanner_settings": {
+        "camera_index": 0,
+        "scan_interval": 2,
+        "qr_detection_timeout": 5,
+        "max_retry_attempts": 3,
+        "log_level": "INFO",
+        "enable_preview": False
+    },
+    "processing_rules": {
+        "notification_threshold_minutes": 5,
+        "duplicate_scan_window_seconds": 30,
+        "auto_update_location": True,
+        "require_confirmation": False,
+        "enable_audit_trail": True
+    }
+}

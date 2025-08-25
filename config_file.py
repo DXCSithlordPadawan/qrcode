@@ -1,22 +1,22 @@
 {
     "domain_controller": {
-        "server": "dc1.aip.dxc.com.com",
+        "server": "dc.picluster.local",
         "port": 389,
-        "use_ssl": true,
-        "base_dn": "DC=aip,DC=dxc,DC=com",
+        "use_ssl": True,
+        "base_dn": "DC=picluster,DC=local",
         "service_account": "svc_qr_scanner",
         "service_password": "your_service_password"
     },
     "certificate_server": {
-        "server": "cert-server.aip.dxc.com",
-        "web_enrollment_url": "https://cert-server.aip.dxc.com/certsrv",
+        "server": "ca.yourdomain.com",
+        "web_enrollment_url": "https://picluster.local/certsrv",
         "template_name": "WebServer"
     },
     "rabbitmq": {
-        "host": "rabbitmq.aip.dxc.com",
+        "host": "localhost",
         "port": 5672,
-        "username": "qr_scanner_user",
-        "password": "your_rabbitmq_password",
+        "username": "odin",
+        "password": "BobTheBigRedBus-0",
         "virtual_host": "/",
         "exchange": "asset_tracking",
         "queue_scan_results": "scan_results",
@@ -27,7 +27,7 @@
     "email": {
         "smtp_server": "mail.yourdomain.com",
         "smtp_port": 587,
-        "use_tls": true,
+        "use_tls": True,
         "username": "notifications@yourdomain.com",
         "password": "your_email_password",
         "from_address": "qr-scanner@yourdomain.com",
@@ -45,20 +45,20 @@
             "OP8": "Sumy Oblas"
         },
         "objects": {
-            "SADrone.js": {
-                "name": "SADrone.js",
-                "type": "Unmanned Aircraftr",
+            "SADrone": {
+                "name": "SADrone",
+                "type": "Unmanned Aircraft",
                 "serial": "Russian Federation",
                 "owner": "Sokol Altius Dron"
             },
-            "KA50.js": {
-                "name": "KA50.jse",
+            "KA50": {
+                "name": "KA50",
                 "type": "AV Equipment",
                 "serial": "Russian Federation",
                 "owner": "Ka-50 Helicoptert"
             },
-            "S500.js": {
-                "name": "S500.js",
+            "S500": {
+                "name": "S500",
                 "type": "Vehicle",
                 "serial": "Russian Federation",
                 "owner": "S-500 Prometheus"
@@ -90,13 +90,13 @@
         "qr_detection_timeout": 5,
         "max_retry_attempts": 3,
         "log_level": "INFO",
-        "enable_preview": false
+        "enable_preview": False
     },
     "processing_rules": {
         "notification_threshold_minutes": 5,
         "duplicate_scan_window_seconds": 30,
-        "auto_update_location": true,
-        "require_confirmation": false,
-        "enable_audit_trail": true
+        "auto_update_location": True,
+        "require_confirmation": False,
+        "enable_audit_trail": True
     }
 }
