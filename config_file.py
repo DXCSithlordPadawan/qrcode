@@ -1,19 +1,19 @@
 {
     "domain_controller": {
-        "server": "dc.yourdomain.com",
+        "server": "dc1.aip.dxc.com.com",
         "port": 389,
         "use_ssl": true,
-        "base_dn": "DC=yourdomain,DC=com",
+        "base_dn": "DC=aip,DC=dxc,DC=com",
         "service_account": "svc_qr_scanner",
         "service_password": "your_service_password"
     },
     "certificate_server": {
-        "server": "ca.yourdomain.com",
-        "web_enrollment_url": "https://ca.yourdomain.com/certsrv",
+        "server": "cert-server.aip.dxc.com",
+        "web_enrollment_url": "https://cert-server.aip.dxc.com/certsrv",
         "template_name": "WebServer"
     },
     "rabbitmq": {
-        "host": "rabbitmq.yourdomain.com",
+        "host": "rabbitmq.aip.dxc.com",
         "port": 5672,
         "username": "qr_scanner_user",
         "password": "your_rabbitmq_password",
