@@ -1,413 +1,566 @@
 #!/usr/bin/env python3
 """
-Raspberry Pi QR Code Scanner - Updated for Bookworm with PiCamera2
-Scans QR codes using camera, identifies locations and objects, sends messages to RabbitMQ
+Raspberry Pi OS Bookworm (64-bit) Camera Fix
+Addresses libcamera changes and new camera stack in Bookworm
 """
 
 import cv2
-import json
-import pika
-import logging
+import subprocess
 import time
-import numpy as np
-from datetime import datetime
-from pyzbar import pyzbar
-import threading
-import signal
+import os
 import sys
-from typing import Optional, Dict, Any
 
-try:
-    from picamera2 import Picamera2
-    PICAMERA2_AVAILABLE = True
-except ImportError:
-    PICAMERA2_AVAILABLE = False
-    logging.warning("PiCamera2 not available, falling back to OpenCV")
-
-class QRCodeScanner:
-    def __init__(self, config_file: str = 'config.json'):
-        """Initialize the QR Code Scanner"""
-        self.config = self.load_config(config_file)
-        self.current_location = None
-        self.last_scans = {}  # To prevent duplicate scans
-        self.running = True
-        
-        # Setup logging
-        logging.basicConfig(
-            level=getattr(logging, self.config['scanner_settings']['log_level']),
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler('/var/log/qr_scanner.log'),
-                logging.StreamHandler()
-            ]
-        )
-        self.logger = logging.getLogger(__name__)
-        
-        # Initialize camera
+class BookwormCameraManager:
+    def __init__(self):
         self.camera = None
-        self.picamera2 = None
-        self.use_picamera2 = PICAMERA2_AVAILABLE
-        self.initialize_camera()
-        
-        # Initialize RabbitMQ connection
-        self.rabbitmq_connection = None
-        self.rabbitmq_channel = None
-        self.initialize_rabbitmq()
-        
-        # Setup signal handlers for graceful shutdown
-        signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)
+        self.method_used = None
+        self.is_bookworm = self._check_bookworm()
     
-    def load_config(self, config_file: str) -> Dict[str, Any]:
-        """Load configuration from JSON file"""
+    def _check_bookworm(self):
+        """Check if running on Bookworm"""
         try:
-            with open(config_file, 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            self.logger.error(f"Configuration file {config_file} not found")
-            sys.exit(1)
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Error parsing configuration file: {e}")
-            sys.exit(1)
-    
-    def initialize_camera(self):
-        """Initialize the camera using PiCamera2 or fallback to OpenCV"""
-        try:
-            if self.use_picamera2:
-                self.logger.info("Attempting to use PiCamera2...")
-                self.picamera2 = Picamera2()
-                
-                # Configure camera
-                camera_config = self.picamera2.create_preview_configuration(
-                    main={"format": 'XRGB8888', "size": (640, 480)}
-                )
-                self.picamera2.configure(camera_config)
-                self.picamera2.start()
-                
-                # Wait for camera to warm up
-                time.sleep(2)
-                
-                self.logger.info("PiCamera2 initialized successfully")
-                return
-            
-        except Exception as e:
-            self.logger.warning(f"Failed to initialize PiCamera2: {e}")
-            self.logger.info("Falling back to OpenCV...")
-            self.use_picamera2 = False
-        
-        # Fallback to OpenCV
-        try:
-            camera_index = self.config['scanner_settings']['camera_index']
-            self.camera = cv2.VideoCapture(camera_index)
-            if not self.camera.isOpened():
-                raise Exception(f"Cannot open camera at index {camera_index}")
-            
-            # Set camera properties for better QR code detection
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            self.camera.set(cv2.CAP_PROP_FPS, 30)
-            
-            self.logger.info("OpenCV camera initialized successfully")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to initialize any camera: {e}")
-            sys.exit(1)
-    
-    def capture_frame(self):
-        """Capture frame from camera (PiCamera2 or OpenCV)"""
-        try:
-            if self.use_picamera2 and self.picamera2:
-                # Capture from PiCamera2
-                frame = self.picamera2.capture_array()
-                
-                # Convert from XRGB8888 to BGR for OpenCV
-                if frame.shape[2] == 4:  # XRGB8888 format
-                    frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
-                elif frame.shape[2] == 3:  # Already BGR
-                    pass
-                else:
-                    self.logger.error(f"Unexpected frame format: {frame.shape}")
-                    return False, None
-                
-                return True, frame
-            
-            elif self.camera:
-                # Capture from OpenCV
-                ret, frame = self.camera.read()
-                return ret, frame
-            
-            else:
-                return False, None
-                
-        except Exception as e:
-            self.logger.error(f"Error capturing frame: {e}")
-            return False, None
-    
-    def initialize_rabbitmq(self):
-        """Initialize RabbitMQ connection"""
-        try:
-            rabbitmq_config = self.config['rabbitmq']
-            credentials = pika.PlainCredentials(
-                rabbitmq_config['username'],
-                rabbitmq_config['password']
-            )
-            
-            parameters = pika.ConnectionParameters(
-                host=rabbitmq_config['host'],
-                port=rabbitmq_config['port'],
-                virtual_host=rabbitmq_config['virtual_host'],
-                credentials=credentials
-            )
-            
-            self.rabbitmq_connection = pika.BlockingConnection(parameters)
-            self.rabbitmq_channel = self.rabbitmq_connection.channel()
-            
-            # Declare exchange and queues
-            self.rabbitmq_channel.exchange_declare(
-                exchange=rabbitmq_config['exchange'],
-                exchange_type='topic',
-                durable=True
-            )
-            
-            self.rabbitmq_channel.queue_declare(
-                queue=rabbitmq_config['queue_scan_results'],
-                durable=True
-            )
-            
-            self.rabbitmq_channel.queue_bind(
-                exchange=rabbitmq_config['exchange'],
-                queue=rabbitmq_config['queue_scan_results'],
-                routing_key=rabbitmq_config['routing_key_scan']
-            )
-            
-            self.logger.info("RabbitMQ connection established")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to initialize RabbitMQ: {e}")
-            sys.exit(1)
-    
-    def decode_qr_codes(self, frame) -> list:
-        """Decode QR codes from camera frame"""
-        try:
-            # Convert to grayscale for better detection
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            
-            # Detect and decode QR codes
-            qr_codes = pyzbar.decode(gray)
-            return qr_codes
-            
-        except Exception as e:
-            self.logger.error(f"Error decoding QR codes: {e}")
-            return []
-    
-    def process_qr_code(self, qr_data: str) -> Optional[Dict[str, Any]]:
-        """Process a detected QR code"""
-        try:
-            # Check if it's a location QR code
-            locations = self.config['qr_codes']['locations']
-            if qr_data in locations:
-                self.current_location = qr_data
-                self.logger.info(f"Location updated to: {locations[qr_data]}")
-                return {
-                    'type': 'location',
-                    'code': qr_data,
-                    'description': locations[qr_data]
-                }
-            
-            # Check if it's an object QR code
-            objects = self.config['qr_codes']['objects']
-            if qr_data in objects:
-                if self.current_location:
-                    # Create message for RabbitMQ
-                    message = self.create_scan_message(qr_data, self.current_location)
-                    self.send_rabbitmq_message(message)
-                    return {
-                        'type': 'object',
-                        'code': qr_data,
-                        'object_info': objects[qr_data],
-                        'location': self.current_location
-                    }
-                else:
-                    self.logger.warning(f"Object {qr_data} scanned but no current location set")
-                    return None
-            
-            # Unknown QR code
-            self.logger.warning(f"Unknown QR code detected: {qr_data}")
-            return None
-            
-        except Exception as e:
-            self.logger.error(f"Error processing QR code {qr_data}: {e}")
-            return None
-    
-    def create_scan_message(self, object_code: str, location_code: str) -> Dict[str, Any]:
-        """Create a message for RabbitMQ"""
-        timestamp = datetime.now().isoformat()
-        
-        message = {
-            'timestamp': timestamp,
-            'scanner_id': f"raspberry_pi_{self.get_device_id()}",
-            'object_code': object_code,
-            'object_info': self.config['qr_codes']['objects'].get(object_code, {}),
-            'location_code': location_code,
-            'location_info': self.config['qr_codes']['locations'].get(location_code, ''),
-            'event_type': 'object_location_update',
-            'source': 'qr_scanner'
-        }
-        
-        return message
-    
-    def get_device_id(self) -> str:
-        """Get a unique device identifier"""
-        try:
-            with open('/proc/cpuinfo', 'r') as f:
-                for line in f:
-                    if line.startswith('Serial'):
-                        return line.split(':')[1].strip()
-            return 'unknown'
+            with open('/etc/os-release', 'r') as f:
+                content = f.read()
+                return 'bookworm' in content.lower()
         except:
-            return 'unknown'
+            return False
     
-    def send_rabbitmq_message(self, message: Dict[str, Any]):
-        """Send message to RabbitMQ"""
+    def check_camera_status(self):
+        """Check camera status on Bookworm"""
+        print("=== BOOKWORM CAMERA STATUS ===")
+        
+        # Check libcamera detection
+        print("1. Checking libcamera detection:")
         try:
-            rabbitmq_config = self.config['rabbitmq']
-            
-            self.rabbitmq_channel.basic_publish(
-                exchange=rabbitmq_config['exchange'],
-                routing_key=rabbitmq_config['routing_key_scan'],
-                body=json.dumps(message),
-                properties=pika.BasicProperties(
-                    delivery_mode=2,  # Make message persistent
-                    timestamp=int(time.time())
-                )
-            )
-            
-            self.logger.info(f"Message sent to RabbitMQ: {message['object_code']} at {message['location_code']}")
-            
+            result = subprocess.run(['libcamera-hello', '--list-cameras'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                print("   ✓ libcamera detected cameras:")
+                print(f"     {result.stdout}")
+            else:
+                print(f"   ✗ libcamera failed: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            print("   ⚠ libcamera-hello timed out")
+        except FileNotFoundError:
+            print("   ✗ libcamera-hello not found")
         except Exception as e:
-            self.logger.error(f"Failed to send RabbitMQ message: {e}")
+            print(f"   ✗ Error: {e}")
+        
+        # Check camera configuration
+        print("\n2. Checking camera configuration:")
+        config_files = ['/boot/firmware/config.txt', '/boot/config.txt']
+        
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                print(f"   Checking {config_file}:")
+                try:
+                    with open(config_file, 'r') as f:
+                        lines = f.readlines()
+                        camera_related = [line.strip() for line in lines 
+                                        if 'camera' in line.lower() and not line.startswith('#')]
+                        if camera_related:
+                            for line in camera_related:
+                                print(f"     {line}")
+                        else:
+                            print("     No camera settings found")
+                except Exception as e:
+                    print(f"     Error reading config: {e}")
+                break
+        
+        # Check V4L2 devices
+        print("\n3. Checking V4L2 devices:")
+        video_devices = []
+        for i in range(10):
+            device_path = f"/dev/video{i}"
+            if os.path.exists(device_path):
+                video_devices.append(i)
+                print(f"   Found: {device_path}")
+        
+        if not video_devices:
+            print("   No V4L2 devices found")
+        
+        return len(video_devices) > 0
     
-    def is_duplicate_scan(self, qr_data: str) -> bool:
-        """Check if this is a duplicate scan within the time window"""
-        current_time = time.time()
-        window = self.config['processing_rules']['duplicate_scan_window_seconds']
+    def initialize_bookworm_camera(self):
+        """Initialize camera using Bookworm-specific methods"""
+        print("\n=== BOOKWORM CAMERA INITIALIZATION ===")
         
-        if qr_data in self.last_scans:
-            if current_time - self.last_scans[qr_data] < window:
-                return True
+        methods = [
+            self._try_picamera2,
+            self._try_libcamera_gstreamer,
+            self._try_opencv_direct,
+            self._try_v4l2_bookworm,
+        ]
         
-        self.last_scans[qr_data] = current_time
+        for method in methods:
+            try:
+                if method():
+                    return True
+            except Exception as e:
+                print(f"Method failed with error: {e}")
+                continue
+        
         return False
     
+    def _try_picamera2(self):
+        """Try using PiCamera2 (recommended for Bookworm)"""
+        print("Trying: PiCamera2 library")
+        
+        try:
+            # Import PiCamera2 (Bookworm's preferred camera library)
+            from picamera2 import Picamera2
+            import numpy as np
+            
+            picam2 = Picamera2()
+            
+            # Configure for low resolution to reduce memory usage
+            camera_config = picam2.create_video_configuration({
+                "size": (640, 480),
+                "format": "RGB888"
+            })
+            picam2.configure(camera_config)
+            
+            # Start camera
+            picam2.start()
+            time.sleep(2)  # Allow camera to stabilize
+            
+            # Capture test frame
+            frame = picam2.capture_array()
+            
+            if frame is not None and frame.size > 0:
+                print(f"SUCCESS: PiCamera2 - Frame: {frame.shape}")
+                self.method_used = "PiCamera2"
+                
+                # Convert PiCamera2 to OpenCV-compatible format
+                self.picam2_instance = picam2
+                return True
+            
+            picam2.stop()
+            return False
+            
+        except ImportError:
+            print("   PiCamera2 not installed. Install with:")
+            print("   sudo apt install -y python3-picamera2")
+            return False
+        except Exception as e:
+            print(f"   PiCamera2 failed: {e}")
+            return False
+    
+    def _try_libcamera_gstreamer(self):
+        """Try libcamera with GStreamer pipeline"""
+        print("Trying: libcamera + GStreamer")
+        
+        # Bookworm-specific libcamera pipelines
+        pipelines = [
+            # Basic libcamera pipeline
+            "libcamerasrc ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! appsink",
+            
+            # With explicit camera selection
+            "libcamerasrc camera-name=\"/base/soc/i2c0mux/i2c@1/imx219@10\" ! video/x-raw,width=640,height=480 ! videoconvert ! appsink",
+            
+            # Lower resolution for memory constraints
+            "libcamerasrc ! video/x-raw,width=320,height=240,framerate=15/1 ! videoconvert ! appsink drop=true max-buffers=1",
+        ]
+        
+        for i, pipeline in enumerate(pipelines):
+            try:
+                print(f"   Testing pipeline {i+1}...")
+                
+                self.camera = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+                
+                if self.camera.isOpened():
+                    ret, frame = self.camera.read()
+                    if ret and frame is not None:
+                        print(f"SUCCESS: libcamera GStreamer - Frame: {frame.shape}")
+                        self.method_used = f"libcamera GStreamer {i+1}"
+                        return True
+                
+                if self.camera:
+                    self.camera.release()
+                    self.camera = None
+                    
+            except Exception as e:
+                print(f"   Pipeline {i+1} failed: {e}")
+                continue
+        
+        return False
+    
+    def _try_opencv_direct(self):
+        """Try direct OpenCV (might work with USB cameras)"""
+        print("Trying: Direct OpenCV VideoCapture")
+        
+        for device_id in range(3):
+            try:
+                print(f"   Testing device {device_id}...")
+                
+                self.camera = cv2.VideoCapture(device_id)
+                
+                if self.camera.isOpened():
+                    # Set reasonable properties
+                    self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    
+                    ret, frame = self.camera.read()
+                    if ret and frame is not None:
+                        print(f"SUCCESS: OpenCV direct device {device_id} - Frame: {frame.shape}")
+                        self.method_used = f"OpenCV Direct {device_id}"
+                        return True
+                
+                if self.camera:
+                    self.camera.release()
+                    self.camera = None
+                    
+            except Exception as e:
+                print(f"   Device {device_id} failed: {e}")
+                continue
+        
+        return False
+    
+    def _try_v4l2_bookworm(self):
+        """Try V4L2 with Bookworm-specific settings"""
+        print("Trying: V4L2 with Bookworm settings")
+        
+        try:
+            # First, try to configure V4L2 device
+            v4l2_commands = [
+                # Set format for device 0
+                'v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=480,pixelformat=YUYV',
+                
+                # Try device 1 (sometimes Pi camera appears here in Bookworm)
+                'v4l2-ctl -d /dev/video1 --set-fmt-video=width=640,height=480,pixelformat=YUYV',
+            ]
+            
+            working_device = None
+            for i, cmd in enumerate(v4l2_commands):
+                try:
+                    result = subprocess.run(cmd.split(), capture_output=True, 
+                                          text=True, timeout=5)
+                    if result.returncode == 0:
+                        working_device = i
+                        print(f"   V4L2 configuration successful for /dev/video{i}")
+                        break
+                except:
+                    continue
+            
+            if working_device is not None:
+                self.camera = cv2.VideoCapture(working_device, cv2.CAP_V4L2)
+                
+                if self.camera.isOpened():
+                    ret, frame = self.camera.read()
+                    if ret and frame is not None:
+                        print(f"SUCCESS: V4L2 Bookworm device {working_device} - Frame: {frame.shape}")
+                        self.method_used = f"V4L2 Bookworm {working_device}"
+                        return True
+                
+                if self.camera:
+                    self.camera.release()
+                    self.camera = None
+            
+            return False
+            
+        except Exception as e:
+            print(f"   V4L2 Bookworm failed: {e}")
+            return False
+    
+    def create_opencv_adapter(self):
+        """Create OpenCV adapter for PiCamera2"""
+        if self.method_used == "PiCamera2" and hasattr(self, 'picam2_instance'):
+            
+            class PiCamera2Adapter:
+                def __init__(self, picam2_instance):
+                    self.picam2 = picam2_instance
+                    self.backend_name = "PiCamera2"
+                
+                def read(self):
+                    try:
+                        frame = self.picam2.capture_array()
+                        # Convert RGB to BGR for OpenCV compatibility
+                        if frame is not None:
+                            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                            return True, frame_bgr
+                        return False, None
+                    except Exception:
+                        return False, None
+                
+                def isOpened(self):
+                    return True  # PiCamera2 doesn't have an isOpened method
+                
+                def release(self):
+                    try:
+                        self.picam2.stop()
+                    except:
+                        pass
+                
+                def set(self, prop, value):
+                    # PiCamera2 doesn't use the same property system
+                    pass
+                
+                def get(self, prop):
+                    # Return default values for common properties
+                    if prop == cv2.CAP_PROP_FRAME_WIDTH:
+                        return 640
+                    elif prop == cv2.CAP_PROP_FRAME_HEIGHT:
+                        return 480
+                    elif prop == cv2.CAP_PROP_FPS:
+                        return 30
+                    return 0
+                
+                def getBackendName(self):
+                    return "PiCamera2"
+            
+            # Replace the camera object with the adapter
+            self.camera = PiCamera2Adapter(self.picam2_instance)
+    
+    def generate_bookworm_qr_code(self):
+        """Generate QR scanner code optimized for Bookworm"""
+        if not self.camera or not self.method_used:
+            return None
+        
+        if "PiCamera2" in self.method_used:
+            code = '''
+# Bookworm QR Scanner - PiCamera2 Method
+import cv2
+from picamera2 import Picamera2
+from pyzbar import pyzbar
+import time
+
+class BookwormQRScanner:
+    def __init__(self):
+        self.picam2 = None
+    
+    def initialize_camera(self):
+        """Initialize PiCamera2 for Bookworm"""
+        try:
+            self.picam2 = Picamera2()
+            
+            # Configure for QR code scanning
+            config = self.picam2.create_video_configuration({
+                "size": (640, 480),
+                "format": "RGB888"
+            })
+            self.picam2.configure(config)
+            self.picam2.start()
+            
+            # Allow camera to stabilize
+            time.sleep(2)
+            
+            self.logger.info("PiCamera2 initialized successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to initialize PiCamera2: {e}")
+            raise
+    
+    def capture_frame(self):
+        """Capture frame from PiCamera2"""
+        try:
+            frame = self.picam2.capture_array()
+            # Convert RGB to BGR for OpenCV
+            if frame is not None:
+                return True, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            return False, None
+        except Exception as e:
+            self.logger.error(f"Frame capture failed: {e}")
+            return False, None
+    
+    def decode_qr_codes(self, frame):
+        """Decode QR codes - same as before"""
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            qr_codes = pyzbar.decode(gray)
+            return qr_codes
+        except Exception as e:
+            self.logger.error(f"QR decode failed: {e}")
+            return []
+    
     def run(self):
-        """Main scanning loop"""
-        self.logger.info(f"Starting QR Code Scanner using {'PiCamera2' if self.use_picamera2 else 'OpenCV'}")
-        
-        scan_interval = self.config['scanner_settings']['scan_interval']
-        enable_preview = self.config['scanner_settings']['enable_preview']
-        
+        """Main loop for Bookworm"""
         while self.running:
             try:
-                # Capture frame from camera
                 ret, frame = self.capture_frame()
-                if not ret or frame is None:
-                    self.logger.error("Failed to capture frame from camera")
-                    time.sleep(1)
-                    continue
-                
-                # Decode QR codes
-                qr_codes = self.decode_qr_codes(frame)
-                
-                # Process each detected QR code
-                for qr_code in qr_codes:
-                    qr_data = qr_code.data.decode('utf-8')
+                if ret:
+                    qr_codes = self.decode_qr_codes(frame)
+                    # Process QR codes as before...
                     
-                    # Skip duplicate scans
-                    if self.is_duplicate_scan(qr_data):
-                        continue
-                    
-                    # Process the QR code
-                    result = self.process_qr_code(qr_data)
-                    if result:
-                        self.logger.info(f"QR Code processed: {result}")
-                
-                # Show preview if enabled
-                if enable_preview:
-                    # Draw rectangles around detected QR codes
-                    for qr_code in qr_codes:
-                        points = qr_code.polygon
-                        if points:
-                            try:
-                                # Convert points to numpy array format that OpenCV expects
-                                points_array = np.array([[point.x, point.y] for point in points], np.int32)
-                                points_array = points_array.reshape((-1, 1, 2))
-                                
-                                # Draw the polygon
-                                cv2.polylines(frame, [points_array], True, (0, 255, 0), 2)
-                                
-                                # Also draw QR code data as text
-                                qr_data = qr_code.data.decode('utf-8')
-                                text_x = int(points[0].x)
-                                text_y = int(points[0].y) - 10
-                                cv2.putText(frame, qr_data, (text_x, text_y), 
-                                          cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-                                          
-                            except Exception as draw_error:
-                                self.logger.warning(f"Error drawing QR code boundary: {draw_error}")
-                                # Fallback: draw simple rectangle using bounding rect
-                                try:
-                                    x = min(point.x for point in points)
-                                    y = min(point.y for point in points)
-                                    w = max(point.x for point in points) - x
-                                    h = max(point.y for point in points) - y
-                                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                                except:
-                                    pass
-                    
-                    cv2.imshow('QR Scanner', frame)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-                
-                time.sleep(scan_interval)
+                time.sleep(0.1)
                 
             except Exception as e:
                 self.logger.error(f"Error in main loop: {e}")
-                time.sleep(5)
-    
-    def signal_handler(self, signum, frame):
-        """Handle shutdown signals"""
-        self.logger.info(f"Received signal {signum}, shutting down...")
-        self.running = False
+                time.sleep(1)
     
     def cleanup(self):
-        """Cleanup resources"""
-        self.logger.info("Cleaning up resources...")
+        """Cleanup PiCamera2"""
+        if self.picam2:
+            self.picam2.stop()
+'''
+
+        elif "libcamera GStreamer" in self.method_used:
+            # Determine which pipeline worked
+            pipeline_num = self.method_used.split()[-1]
+            pipelines = [
+                "libcamerasrc ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! appsink",
+                "libcamerasrc camera-name=\"/base/soc/i2c0mux/i2c@1/imx219@10\" ! video/x-raw,width=640,height=480 ! videoconvert ! appsink",
+                "libcamerasrc ! video/x-raw,width=320,height=240,framerate=15/1 ! videoconvert ! appsink drop=true max-buffers=1"
+            ]
+            
+            try:
+                pipeline = pipelines[int(pipeline_num) - 1]
+            except:
+                pipeline = pipelines[0]
+            
+            code = f'''
+# Bookworm QR Scanner - libcamera GStreamer Method
+def initialize_camera(self):
+    """Initialize camera with libcamera GStreamer pipeline"""
+    try:
+        pipeline = "{pipeline}"
+        self.camera = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
         
-        if self.picamera2:
-            self.picamera2.stop()
-            self.picamera2.close()
+        if not self.camera.isOpened():
+            raise Exception("Cannot open libcamera GStreamer pipeline")
         
-        if self.camera:
+        self.logger.info("libcamera GStreamer pipeline initialized")
+        
+    except Exception as e:
+        self.logger.error(f"libcamera initialization failed: {{e}}")
+        raise
+
+# Use the rest of your QR scanner code as-is
+# The main difference is just the camera initialization
+'''
+
+        else:
+            # Standard OpenCV or V4L2
+            device_id = self.method_used.split()[-1] if any(char.isdigit() for char in self.method_used) else "0"
+            backend = "cv2.CAP_V4L2" if "V4L2" in self.method_used else "cv2.CAP_ANY"
+            
+            code = f'''
+# Bookworm QR Scanner - OpenCV Method  
+def initialize_camera(self):
+    """Initialize camera with OpenCV for Bookworm"""
+    try:
+        self.camera = cv2.VideoCapture({device_id}, {backend})
+        
+        if not self.camera.isOpened():
+            raise Exception("Cannot open camera")
+        
+        # Configure camera
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        
+        self.logger.info("OpenCV camera initialized for Bookworm")
+        
+    except Exception as e:
+        self.logger.error(f"Camera initialization failed: {{e}}")
+        raise
+'''
+        
+        return code
+    
+    def test_sustained_operation(self, duration=30):
+        """Test sustained operation"""
+        if not self.camera:
+            return False
+        
+        print(f"\nTesting sustained operation for {duration} seconds...")
+        
+        frame_count = 0
+        failed_count = 0
+        start_time = time.time()
+        
+        while time.time() - start_time < duration:
+            try:
+                if hasattr(self.camera, 'capture_array'):
+                    # PiCamera2 method
+                    frame = self.camera.capture_array()
+                    ret = frame is not None
+                else:
+                    # OpenCV method
+                    ret, frame = self.camera.read()
+                
+                if ret:
+                    frame_count += 1
+                else:
+                    failed_count += 1
+                
+                time.sleep(0.1)
+                
+            except Exception as e:
+                failed_count += 1
+                time.sleep(0.1)
+        
+        success_rate = frame_count / (frame_count + failed_count) * 100
+        print(f"Results: {frame_count} frames captured, {failed_count} failures")
+        print(f"Success rate: {success_rate:.1f}%")
+        
+        return success_rate > 90
+    
+    def release(self):
+        """Release camera resources"""
+        if hasattr(self, 'picam2_instance'):
+            try:
+                self.picam2_instance.stop()
+            except:
+                pass
+        
+        if self.camera and hasattr(self.camera, 'release'):
             self.camera.release()
         
-        if cv2:
-            cv2.destroyAllWindows()
-        
-        if self.rabbitmq_connection and not self.rabbitmq_connection.is_closed:
-            self.rabbitmq_connection.close()
-        
-        self.logger.info("Cleanup complete")
+        self.camera = None
 
 def main():
-    """Main function"""
-    try:
-        scanner = QRCodeScanner()
-        scanner.run()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        if 'scanner' in locals():
-            scanner.cleanup()
+    """Test Bookworm camera fixes"""
+    print("Raspberry Pi OS Bookworm Camera Fix")
+    print("=" * 50)
+    
+    manager = BookwormCameraManager()
+    
+    if not manager.is_bookworm:
+        print("Warning: This script is optimized for Bookworm OS")
+    
+    # Check camera status
+    has_cameras = manager.check_camera_status()
+    
+    if not has_cameras:
+        print("\n⚠ No cameras detected!")
+        print("Install PiCamera2: sudo apt install -y python3-picamera2")
+        print("Enable camera: Add 'camera_auto_detect=1' to /boot/firmware/config.txt")
+        print("Reboot: sudo reboot")
+        return
+    
+    # Try to initialize
+    if manager.initialize_bookworm_camera():
+        print(f"\n✓ Camera working with method: {manager.method_used}")
+        
+        # Create OpenCV adapter if needed
+        manager.create_opencv_adapter()
+        
+        # Test sustained operation
+        if manager.test_sustained_operation(duration=15):
+            print("✓ Sustained operation test passed!")
+            
+            # Generate code
+            code = manager.generate_bookworm_qr_code()
+            if code:
+                print("\n" + "="*60)
+                print("BOOKWORM QR SCANNER CODE:")
+                print("="*60)
+                print(code)
+                
+                with open("bookworm_qr_scanner.py", "w") as f:
+                    f.write(code)
+                print("\nCode saved to: bookworm_qr_scanner.py")
+        
+    else:
+        print("\n✗ All camera initialization methods failed")
+        print("\nBookworm-specific troubleshooting:")
+        print("1. Install PiCamera2: sudo apt install -y python3-picamera2")
+        print("2. Update system: sudo apt update && sudo apt upgrade")
+        print("3. Check config: Add 'camera_auto_detect=1' to /boot/firmware/config.txt")
+        print("4. Reboot: sudo reboot")
+    
+    manager.release()
 
 if __name__ == "__main__":
     main()
