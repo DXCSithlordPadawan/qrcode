@@ -46,10 +46,18 @@ class BookwormQRScanner:
             
             self.picam2 = Picamera2()
             
-            # Check if camera is detected
-            camera_info = self.picam2.camera_info
-            self.logger.info(f"Camera detected: {camera_info}")
-            print(f"Camera info: {camera_info}")
+            # Check if camera is detected (compatible with different PiCamera2 versions)
+            try:
+                if hasattr(self.picam2, 'camera_info'):
+                    camera_info = self.picam2.camera_info
+                    self.logger.info(f"Camera detected: {camera_info}")
+                    print(f"Camera info: {camera_info}")
+                else:
+                    self.logger.info("Camera detected (info not available in this PiCamera2 version)")
+                    print("Camera detected")
+            except Exception as info_error:
+                self.logger.warning(f"Could not get camera info: {info_error}")
+                print("Camera detected but info unavailable")
             
             # Configure for QR code scanning
             self.logger.info("Configuring camera...")
