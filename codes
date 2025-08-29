@@ -1,0 +1,22 @@
+"qr_codes": {
+    "locations": {
+      "OP1": "Donetsk Oblast",
+      "OP2": "Dnipropetrovsk Oblast",
+      "OP3": "Zaporizhzhia Oblast",
+      "OP4": "Kyiv Oblast",
+      "OP5": "Kirovohrad Oblast",
+      "OP6": "Mykolaiv Oblast",
+      "OP7": "Odesa Oblast",
+      "OP8": "Sumy Oblast"
+    },
+    "objects": {
+      "SADrone": "Sokol Altius Drone",
+      "KA50": "Ka-50 Helicopter",
+      "S500": "S-500 Prometheus",
+      "S400": "SA-21 Growler",
+      "Admiral": "Admiral Chabanenko - Destroyer",
+      "T90": "T-90 Main Battle Tank",
+      "SSu57": "Sukhoi Su-57 Aircraft",
+      "35GdsMRBde": "35th Guards Motor Rifle Brigade"
+    }
+  },
