@@ -217,65 +217,84 @@ class CompleteBookwormScanner:
             return []
     
     def process_qr_code(self, qr_data):
-        """Process detected QR code and handle location/object logic"""
-        try:
-            print(f"\n--- Processing QR Code: '{qr_data}' ---")
+    """Process detected QR code and handle location/object logic"""
+    try:
+        # Normalize the QR data - remove whitespace and convert to uppercase
+        qr_data_normalized = qr_data.strip().upper()
+        
+        print(f"\n--- Processing QR Code: '{qr_data}' (normalized: '{qr_data_normalized}') ---")
+        
+        # Check if it's a location QR code
+        locations = self.config['qr_codes']['locations']
+        
+        # Check both original and normalized versions
+        location_key = None
+        if qr_data in locations:
+            location_key = qr_data
+        elif qr_data_normalized in locations:
+            location_key = qr_data_normalized
+        
+        if location_key:
+            self.current_location = location_key
+            location_info = locations[location_key]
+            description = location_info.get('description', location_key) if isinstance(location_info, dict) else str(location_info)
             
-            # Check if it's a location QR code
-            locations = self.config['qr_codes']['locations']
-            if qr_data in locations:
-                self.current_location = qr_data
-                location_info = locations[qr_data]
-                description = location_info.get('description', qr_data) if isinstance(location_info, dict) else str(location_info)
+            print(f"✓ LOCATION SET: {location_key} - {description}")
+            self.logger.info(f"Location updated to: {location_key} - {description}")
+            
+            return {
+                'type': 'location',
+                'code': location_key,
+                'description': description
+            }
+        
+        # Check if it's an object QR code
+        objects = self.config['qr_codes']['objects']
+        
+        # Check both original and normalized versions
+        object_key = None
+        if qr_data in objects:
+            object_key = qr_data
+        elif qr_data_normalized in objects:
+            object_key = qr_data_normalized
+        
+        if object_key:
+            object_info = objects[object_key]
+            
+            if self.current_location:
+                # Create and send message
+                message = self.create_scan_message(object_key, self.current_location)
+                success = self.send_rabbitmq_message(message)
                 
-                print(f"✓ LOCATION SET: {qr_data} - {description}")
-                self.logger.info(f"Location updated to: {qr_data} - {description}")
+                print(f"✓ OBJECT SCANNED: {object_key} at location {self.current_location}")
+                print(f"✓ MESSAGE SENT: {'RabbitMQ' if success else 'Local Log'}")
                 
                 return {
-                    'type': 'location',
-                    'code': qr_data,
-                    'description': description
+                    'type': 'object',
+                    'code': object_key,
+                    'object_info': object_info,
+                    'location': self.current_location,
+                    'message_sent': success
                 }
-            
-            # Check if it's an object QR code
-            objects = self.config['qr_codes']['objects']
-            if qr_data in objects:
-                object_info = objects[qr_data]
-                
-                if self.current_location:
-                    # Create and send message
-                    message = self.create_scan_message(qr_data, self.current_location)
-                    success = self.send_rabbitmq_message(message)
-                    
-                    print(f"✓ OBJECT SCANNED: {qr_data} at location {self.current_location}")
-                    print(f"✓ MESSAGE SENT: {'RabbitMQ' if success else 'Local Log'}")
-                    
-                    return {
-                        'type': 'object',
-                        'code': qr_data,
-                        'object_info': object_info,
-                        'location': self.current_location,
-                        'message_sent': success
-                    }
-                else:
-                    print(f"⚠ OBJECT DETECTED: {qr_data} but NO LOCATION SET")
-                    print("Please scan a location QR code first")
-                    return {
-                        'type': 'object_no_location',
-                        'code': qr_data,
-                        'object_info': object_info
-                    }
-            
-            # Unknown QR code
-            print(f"? UNKNOWN QR CODE: '{qr_data}'")
-            print(f"Available locations: {list(locations.keys())}")
-            print(f"Available objects: {list(objects.keys())}")
-            return None
-            
-        except Exception as e:
-            print(f"ERROR processing QR code: {e}")
-            self.logger.error(f"Error processing QR code {qr_data}: {e}")
-            return None
+            else:
+                print(f"⚠ OBJECT DETECTED: {object_key} but NO LOCATION SET")
+                print("Please scan a location QR code first")
+                return {
+                    'type': 'object_no_location',
+                    'code': object_key,
+                    'object_info': object_info
+                }
+        
+        # Unknown QR code
+        print(f"? UNKNOWN QR CODE: '{qr_data}' (normalized: '{qr_data_normalized}')")
+        print(f"Available locations: {list(locations.keys())}")
+        print(f"Available objects: {list(objects.keys())}")
+        return None
+        
+    except Exception as e:
+        print(f"ERROR processing QR code: {e}")
+        self.logger.error(f"Error processing QR code {qr_data}: {e}")
+        return None
     
     def create_scan_message(self, object_code, location_code):
         """Create message for RabbitMQ"""
