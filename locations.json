@@ -21,24 +21,25 @@
       "description": "Kyiv Oblast"
     },
     {
-      "id": "OP05",
+      "id": "OP5",
       "name": "OP5",
       "description": "Kirovohrad Oblast"
     },
     {
-      "id": "OP06",
+      "id": "OP6",
       "name": "OP6",
       "description": "Mykolaiv Oblast"
     },
     {
-      "id": "OP07",
+      "id": "OP7",
       "name": "OP7",
       "description": "Odesa Oblast"
     },
     {
-      "id": "OP08",
+      "id": "OP8",
       "name": "OP8",
       "description": "Sumy Oblast"
     }
   ]
+
 }
