@@ -1,9 +1,9 @@
 {
     "domain_controller": {
-        "server": "dc1.aip.dxc.com",
+        "server": "dc.picluster.local",
         "port": 389,
         "use_ssl": true,
-        "base_dn": "DC=aip,DC=dxc,DC=com",
+        "base_dn": "DC=picluster,DC=local",
         "service_account": "svc_qr_scanner",
         "service_password": "your_service_password"
     },
@@ -13,7 +13,7 @@
         "template_name": "WebServer"
     },
     "rabbitmq": {
-        "host": "192.168.0.130",
+        "host": "localhost",
         "port": 5672,
         "username": "odin",
         "password": "BobTheBigRedBus-0",
@@ -69,35 +69,299 @@
             }
         },
         "objects": {
-            "SADrone": {
-                "name": "SADrone",
-                "category": "Unmanned Aircraft",
+            "1HvMecBde": {
+                "name": "1HvMecBde",
+                "category": "Unit",
                 "serial": "Russian Federation",
-                "description": "Red Mech Brigade"
+                "description": "1st Heavy Mechanized Brigade"
+            },
+            "28MechBde": {
+                "name": "28MechBde",
+                "category": "Unit",
+                "serial": "Russian Federation",
+                "description": "28th Mechanized Brigade"
+            },
+            "2S34": {
+                "name": "2S34",
+                "category": "Vehicle",
+                "serial": "Russian Federation",
+                "description": "2S34 Hosta Self-Propelled Mortar"
+            },
+            "35GdsMRBde": {
+                "name": "35GdsMRBde",
+                "category": "Unit",
+                "serial": "Russian Federation",
+                "description": "35th Guards Motor Rifle Brigade"
+            },
+            "39GdsMRBde": {
+                "name": "39GdsMRBde",
+                "category": "Unit",
+                "serial": "Russian Federation",
+                "description": "39th Guards Motor Rifle Brigade"
+            },
+            "45Recce": {
+                "name": "45Recce",
+                "category": "Unit",
+                "serial": "Russian Federation",
+                "description": "45th Reconnaissance Regiment"
+            },
+            "56AirAss": {
+                "name": "56AirAss",
+                "category": "Unit",
+                "serial": "Russian Federation",
+                "description": "56th Air Assault Regiment"
+            },
+            "79RAB": {
+                "name": "79RAB",
+                "category": "Unit",
+                "serial": "Russian Federation",
+                "description": "79th Rocket Artillery Brigade"
+            },
+            "Admiral": {
+                "name": "Admiral",
+                "category": "Naval Unit",
+                "serial": "Russian Federation",
+                "description": "Admiral Class Naval Vessel"
+            },
+            "BA50": {
+                "name": "BA50",
+                "category": "Vehicle",
+                "serial": "Russian Federation",
+                "description": "BA-50 Armored Personnel Carrier"
+            },
+            "Barbed": {
+                "name": "Barbed",
+                "category": "Obstacle",
+                "serial": "Russian Federation",
+                "description": "Barbed Wire Obstacle"
+            },
+            "BM21": {
+                "name": "BM21",
+                "category": "Vehicle",
+                "serial": "Russian Federation",
+                "description": "BM-21 Grad Multiple Launch Rocket System"
+            },
+            "BTR90": {
+                "name": "BTR90",
+                "category": "Vehicle",
+                "serial": "Russian Federation",
+                "description": "BTR-90 Armored Personnel Carrier"
+            },
+            "Buk": {
+                "name": "Buk",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "Buk Surface-to-Air Missile System"
+            },
+            "D30": {
+                "name": "D30",
+                "category": "Artillery",
+                "serial": "Russian Federation",
+                "description": "D-30 122mm Howitzer"
+            },
+            "DragonT": {
+                "name": "DragonT",
+                "category": "Obstacle",
+                "serial": "Russian Federation",
+                "description": "Dragon Teeth Tank Obstacle"
+            },
+            "HS136": {
+                "name": "HS136",
+                "category": "Aircraft",
+                "serial": "Russian Federation",
+                "description": "HS-136 Helicopter"
+            },
+            "KA27": {
+                "name": "KA27",
+                "category": "Aircraft",
+                "serial": "Russian Federation",
+                "description": "Ka-27 Naval Helicopter"
             },
             "KA50": {
                 "name": "KA50",
                 "category": "Aircraft",
                 "serial": "Russian Federation",
-                "description": "Ka-50 Helicopter"
+                "description": "Ka-50 Black Shark Attack Helicopter"
+            },
+            "Mi28": {
+                "name": "Mi28",
+                "category": "Aircraft",
+                "serial": "Russian Federation",
+                "description": "Mi-28 Attack Helicopter"
+            },
+            "MIG29": {
+                "name": "MIG29",
+                "category": "Aircraft",
+                "serial": "Russian Federation",
+                "description": "MiG-29 Fighter Aircraft"
+            },
+            "Ranzhir": {
+                "name": "Ranzhir",
+                "category": "Command Vehicle",
+                "serial": "Russian Federation",
+                "description": "Ranzhir Command and Control Vehicle"
+            },
+            "RFID1": {
+                "name": "RFID1",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 1"
+            },
+            "RFID11": {
+                "name": "RFID11",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 11"
+            },
+            "RFID12": {
+                "name": "RFID12",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 12"
+            },
+            "RFID2": {
+                "name": "RFID2",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 2"
+            },
+            "RFID3": {
+                "name": "RFID3",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 3"
+            },
+            "RFID4": {
+                "name": "RFID4",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 4"
+            },
+            "RFID5": {
+                "name": "RFID5",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 5"
+            },
+            "RFID6": {
+                "name": "RFID6",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 6"
+            },
+            "RFID7": {
+                "name": "RFID7",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 7"
+            },
+            "RFID8": {
+                "name": "RFID8",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 8"
+            },
+            "RFID9": {
+                "name": "RFID9",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFID Sensor Array Type 9"
+            },
+            "RFIS10": {
+                "name": "RFIS10",
+                "category": "Sensor",
+                "serial": "Russian Federation",
+                "description": "RFIS Sensor Array Type 10"
+            },
+            "S300": {
+                "name": "S300",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "S-300 Surface-to-Air Missile System"
+            },
+            "S400": {
+                "name": "S400",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "S-400 Triumf Surface-to-Air Missile System"
             },
             "S500": {
                 "name": "S500",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "S-500 Prometheus Surface-to-Air Missile System"
+            },
+            "SA13": {
+                "name": "SA13",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "SA-13 Gopher Short-Range SAM"
+            },
+            "SA14": {
+                "name": "SA14",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "SA-14 Gremlin MANPADS"
+            },
+            "SA15": {
+                "name": "SA15",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "SA-15 Gauntlet Short-Range SAM"
+            },
+            "SA25": {
+                "name": "SA25",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "SA-25 Advanced SAM System"
+            },
+            "SA7": {
+                "name": "SA7",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "SA-7 Grail MANPADS"
+            },
+            "SADrone": {
+                "name": "SADrone",
+                "category": "Unmanned Aircraft",
+                "serial": "Russian Federation",
+                "description": "Surface-to-Air Defense Drone"
+            },
+            "SSu57": {
+                "name": "SSu57",
+                "category": "Aircraft",
+                "serial": "Russian Federation",
+                "description": "Su-57 Felon Stealth Fighter"
+            },
+            "SU34": {
+                "name": "SU34",
+                "category": "Aircraft",
+                "serial": "Russian Federation",
+                "description": "Su-34 Fighter-Bomber"
+            },
+            "T80": {
+                "name": "T80",
                 "category": "Vehicle",
                 "serial": "Russian Federation",
-                "description": "S-500 Prometheus"
+                "description": "T-80 Main Battle Tank"
             },
-            "OBJ004": {
-                "name": "Red4",
-                "category": "Obstacle",
-                "serial": "NSN0126",
-                "description": "Red Tank Trap"
+            "T90": {
+                "name": "T90",
+                "category": "Vehicle",
+                "serial": "Russian Federation",
+                "description": "T-90 Main Battle Tank"
             },
-            "OBJ005": {
-                "name": "Red5",
-                "category": "Land",
-                "serial": "NSN0127",
-                "description": "Red Infantry Reg 1"
+            "Tor": {
+                "name": "Tor",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "Tor Short-Range Surface-to-Air Missile System"
+            },
+            "ZSU23": {
+                "name": "ZSU23",
+                "category": "Air Defense",
+                "serial": "Russian Federation",
+                "description": "ZSU-23-4 Shilka Self-Propelled Anti-Aircraft Gun"
             }
         }
     },
